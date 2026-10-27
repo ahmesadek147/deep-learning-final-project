@@ -9,3 +9,4 @@ datasets
 mlflow
 PyYAML
 tqdm
+pytest
