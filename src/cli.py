@@ -2,6 +2,8 @@
 import argparse
 import yaml
 from src.training.run_training import run_training
+from pathlib import Path
+from src.predict import predict_image
 
 
 def main():
@@ -59,6 +61,24 @@ def main():
                 print(
                     f"Training for {args.task} is not implemented yet."
                 )
+
+    if args.command == "predict":
+        if not args.image:
+            parser.error("Prediction requires --image")
+
+        image_path = Path(args.image)
+
+        if not image_path.is_file():
+            parser.error(f"Image not found: {args.image}")
+
+        result = predict_image(
+            image_path=args.image,
+            task=args.task
+        )
+
+        print("\nPrediction Completed!")
+        print("Predicted Class:", result["class_id"])
+        print("Confidence:", f'{result["confidence"] * 100:.2f}%')      
 
 if __name__ == "__main__":
     main()
