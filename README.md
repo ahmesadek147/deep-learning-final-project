@@ -1,1 +1,1 @@
-# deeb-learning-final-project
+# deep-learning-final-project
