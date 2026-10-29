@@ -1,7 +1,7 @@
 import torch
 from torch import nn
-from torch.utils.data import DataLoader, TensorDataset
 
+from src.dataset import get_dataloaders
 from src.models import ScratchCNN
 from src.training.trainer import Trainer
 from src.training.early_stopping import EarlyStopping
@@ -27,6 +27,53 @@ def build_model(model_config):
 
     raise ValueError(f"Unsupported model: {model_name}")
 
+def validate_classification_batch(
+    images,
+    labels,
+    num_classes,
+    image_size,
+):
+    """Validate one batch before classification training."""
+
+    if images.ndim != 4:
+        raise ValueError(
+            "Expected images with shape "
+            "(batch_size, channels, height, width)."
+        )
+
+    if images.shape[1] != 3:
+        raise ValueError(
+            f"Expected RGB images with 3 channels, "
+            f"but received {images.shape[1]}."
+        )
+
+    if images.shape[2:] != (image_size, image_size):
+        raise ValueError(
+            f"Expected image size {image_size}x{image_size}, "
+            f"but received {tuple(images.shape[2:])}."
+        )
+
+    if labels.ndim != 1:
+        raise ValueError(
+            "Expected labels with shape (batch_size,)."
+        )
+
+    if labels.dtype != torch.long:
+        raise TypeError(
+            f"Labels must use torch.long, but received "
+            f"{labels.dtype}."
+        )
+
+    minimum_label = labels.min().item()
+    maximum_label = labels.max().item()
+
+    if minimum_label < 0 or maximum_label >= num_classes:
+        raise ValueError(
+            f"Labels must be between 0 and {num_classes - 1}, "
+            f"but this batch contains values from "
+            f"{minimum_label} to {maximum_label}."
+        )
+
 def run_training(config):
     print("Starting Training Pipeline...")
 
@@ -35,22 +82,36 @@ def run_training(config):
     batch_size = config["training"]["batch_size"]
     learning_rate = config["training"]["learning_rate"]
 
-    # Temporary dummy data for integration testing
-    images = torch.randn(40, 3, 32, 32)
-    labels = torch.randint(0, 5, (40,))
+    data_config = config.get("data", {})
 
-    dataset = TensorDataset(images, labels)
+    image_size = data_config.get("image_size", 224)
+    val_split = data_config.get("val_split", 0.2)
+    num_workers = data_config.get("num_workers", 0)
+    seed = data_config.get("seed", 42)
 
-    train_loader = DataLoader(
-        dataset,
+    train_loader, val_loader = get_dataloaders(
         batch_size=batch_size,
-        shuffle=True,
+        val_split=val_split,
+        image_size=image_size,
+        num_workers=num_workers,
+        seed=seed,
     )
 
-    val_loader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=False,
+    images, labels = next(iter(train_loader))
+
+    validate_classification_batch(
+        images=images,
+        labels=labels,
+        num_classes=config["model"]["num_classes"],
+        image_size=image_size,
+    )
+
+    print(
+        f"Verified training batch: images={tuple(images.shape)}, "
+        f"labels={tuple(labels.shape)}, "
+        f"label_dtype={labels.dtype}, "
+        f"label_range=({labels.min().item()}, "
+        f"{labels.max().item()})"
     )
 
     # Build the configured classification model
