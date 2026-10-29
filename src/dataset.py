@@ -1,3 +1,5 @@
+import torch
+from src.data.augmentation import build_train_transform, build_eval_transform
 from datasets import load_dataset
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision import transforms
@@ -34,18 +36,9 @@ def get_dataloaders(batch_size=32, val_split=0.2):
     print("Loading CUB-200-2011 dataset...")
     raw_dataset = load_dataset("Multimodal-Fatima/CUB_train", split="train")
     
-    # Define standard image transformations for deep learning (e.g., ResNet/ViT input size)
-    train_transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-    
-    val_transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
+    # Augmentation for training; deterministic resize + normalize for validation
+    train_transform = build_train_transform()
+    val_transform = build_eval_transform()
     
     # Calculate split sizes
     total_size = len(raw_dataset)
@@ -54,10 +47,14 @@ def get_dataloaders(batch_size=32, val_split=0.2):
     
     print(f"Splitting dataset: {train_size} training samples, {val_size} validation samples.")
     
-    # Split the raw dataset indices
-    train_data_raw, val_data_raw = random_split(raw_dataset, [train_size, val_size])
+    # Split the raw dataset indices with a fixed seed
+    train_data_raw, val_data_raw = random_split(
+        raw_dataset,
+        [train_size, val_size],
+        generator=torch.Generator().manual_seed(42),
+    )
     
-    # Wrap in our custom PyTorch Dataset class with respective transforms
+    # Wrap the split subsets in the CUBDataset class
     train_dataset = CUBDataset(train_data_raw, transform=train_transform)
     val_dataset = CUBDataset(val_data_raw, transform=val_transform)
     
