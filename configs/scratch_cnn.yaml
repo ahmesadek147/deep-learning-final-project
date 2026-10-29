@@ -1,0 +1,27 @@
+task: classification
+
+model:
+  name: scratch_cnn
+  num_classes: 5
+  variant: basic
+  dropout: 0.5
+  pretrained: false
+
+training:
+  epochs: 3
+  batch_size: 8
+  learning_rate: 0.001
+  optimizer: adam
+  loss: cross_entropy
+
+early_stopping:
+  enabled: true
+  patience: 3
+  min_delta: 0.0
+
+checkpoint:
+  save_dir: outputs/checkpoints/scratch_cnn
+
+mlflow:
+  experiment_name: Bird_Classification
+  tracking_uri: http://127.0.0.1:5000

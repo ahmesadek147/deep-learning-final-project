@@ -1,12 +1,31 @@
-
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
+from src.models import ScratchCNN
 from src.training.trainer import Trainer
 from src.training.early_stopping import EarlyStopping
 from src.training.checkpoints import ModelCheckpoint
 
+def build_model(model_config):
+    """Build a classification model from configuration."""
+
+    model_name = model_config["name"]
+
+    if model_name == "scratch_cnn":
+        return ScratchCNN(
+            num_classes=model_config["num_classes"],
+            variant=model_config.get("variant", "basic"),
+            dropout=model_config.get("dropout", 0.5),
+        )
+
+    if model_name == "simple_cnn":
+        return nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(3 * 32 * 32, 5),
+        )
+
+    raise ValueError(f"Unsupported model: {model_name}")
 
 def run_training(config):
     print("Starting Training Pipeline...")
@@ -16,7 +35,7 @@ def run_training(config):
     batch_size = config["training"]["batch_size"]
     learning_rate = config["training"]["learning_rate"]
 
-    # Temporary dummy data for testing
+    # Temporary dummy data for integration testing
     images = torch.randn(40, 3, 32, 32)
     labels = torch.randint(0, 5, (40,))
 
@@ -25,20 +44,17 @@ def run_training(config):
     train_loader = DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=True
+        shuffle=True,
     )
 
     val_loader = DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=False
+        shuffle=False,
     )
 
-    # Temporary test model
-    model = nn.Sequential(
-        nn.Flatten(),
-        nn.Linear(3 * 32 * 32, 5)
-    )
+    # Build the configured classification model
+    model = build_model(config["model"])
 
     device = torch.device(
         "cuda" if torch.cuda.is_available() else "cpu"
@@ -46,7 +62,7 @@ def run_training(config):
 
     optimizer = torch.optim.Adam(
         model.parameters(),
-        lr=learning_rate
+        lr=learning_rate,
     )
 
     criterion = nn.CrossEntropyLoss()
@@ -55,13 +71,17 @@ def run_training(config):
         model=model,
         optimizer=optimizer,
         criterion=criterion,
-        device=device
+        device=device,
     )
 
-    early_stopping = EarlyStopping(
-        patience=config["early_stopping"]["patience"],
-        min_delta=config["early_stopping"]["min_delta"]
-    ) if config["early_stopping"]["enabled"] else None
+    early_stopping = (
+        EarlyStopping(
+            patience=config["early_stopping"]["patience"],
+            min_delta=config["early_stopping"]["min_delta"],
+        )
+        if config["early_stopping"]["enabled"]
+        else None
+    )
 
     checkpoint = ModelCheckpoint(
         save_dir=config["checkpoint"]["save_dir"]
@@ -72,7 +92,7 @@ def run_training(config):
         val_loader=val_loader,
         epochs=epochs,
         early_stopping=early_stopping,
-        checkpoint=checkpoint
+        checkpoint=checkpoint,
     )
 
     print("Training Pipeline Completed!")
