@@ -68,19 +68,72 @@ Open:
 
 http://127.0.0.1:5000
 
-## Training CLI
+## Part 4 and Part 5 training
 
-Run the classification pipeline:
+Both experiment paths use the real Hugging Face `Multimodal-Fatima/CUB_train`
+training split (5,994 images), with a deterministic train/validation split.
+Validation metrics are accuracy, macro precision, macro recall, and macro F1.
+No test data is used in these commands.
+
+`configs/experiment.yaml` holds shared data, device/AMP, training, MLflow, and
+checkpoint settings under `common`; `p4` and `p5` contain only their model
+settings and search spaces. Both parts therefore use the same seeded validation
+split. It is the only classification experiment configuration file.
+
+To start the configured searches explicitly (they are intentionally not
+automatic):
 
 ```bash
-python -m src.cli train --task classification --config configs/cls.yaml
+# Part 4: complete grid search (8 configurations)
+python -m src.cli search --part p4 --config configs/experiment.yaml
+
+# Part 5: reproducible random search (8 trials with the shipped config)
+python -m src.cli search --part p5 --config configs/experiment.yaml
+
+# Run P4 followed by P5 with the same common configuration
+python -m src.cli search --part both --config configs/experiment.yaml
 ```
 
-The current CLI training pipeline uses synthetic
-data and a temporary linear classifier for testing.
+`p5` uses a pretrained ResNet18. When its backbone is
+frozen, its replacement classification head remains trainable. Edit `search`
+in either experiment section to change the search space or trial count. P4
+requires its trial count to equal its complete grid; P5 samples unique discrete
+configurations without replacement. The search result
+selects the highest final validation macro F1 and reports its validation
+accuracy, macro precision, macro recall, and macro F1. Each trial receives its
+own checkpoint directory under `outputs/checkpoints` and an MLflow run.
+The shipped P4/P5 configs log locally to `outputs/mlflow.db`; view them with:
 
-Integration with the real CUB-200-2011 dataset
-and team models is still required.
+```bash
+mlflow ui --backend-store-uri sqlite:///outputs/mlflow.db
+```
+
+For a small direct smoke run (not a search), the CLI supports explicit epoch
+and sample limits:
+
+```bash
+python -m src.cli train --part p4 --epochs 1 --max-train-samples 16 --max-val-samples 8
+python -m src.cli train --part p5 --epochs 1 --max-train-samples 16 --max-val-samples 8
+```
+
+Search trials are summarized under `outputs/search_summaries/`. Prediction uses
+a selected trial checkpoint, for example:
+
+```bash
+python -m src.cli predict --image path/to/bird.jpg --checkpoint outputs/checkpoints/p4_grid/<run-id>/best_model.pth
+```
+
+After model selection, evaluate the untouched CUB test split (this does not
+retrain or tune either model):
+
+```bash
+python -m src.cli evaluate --part both --config configs/experiment.yaml \
+  --checkpoint-p4 outputs/checkpoints/p4_grid/grid-18850aea-trial-003/best_model.pth \
+  --checkpoint-p5 outputs/checkpoints/p5_random/random-618382b5-trial-005/best_model.pth
+```
+
+Metrics and reports are written to `outputs/evaluation/`; P5 Grad-CAM panels
+(original, heatmap, and overlay) are written to `outputs/gradcam/`.
 
 ## Training Features
 
@@ -97,7 +150,7 @@ The Trainer supports:
 
 Training settings are stored in:
 
-configs/cls.yaml
+`configs/experiment.yaml`.
 
 The configuration includes:
 
@@ -107,7 +160,7 @@ The configuration includes:
 - Optimizer
 - Early stopping
 - Checkpoint directory
-- MLflow settings
+- MLflow settings and search space
 
 ## Project Structure
 
@@ -133,11 +186,8 @@ MLflow records:
 
 ## Current Status
 
-P1 infrastructure has been tested using
-synthetic data.
-
-Real dataset integration, model integration,
-and full prediction support remain pending.
+P4/P5 use the real CUB dataset and must be run explicitly; no completed
+training metric is committed to the repository.
 
 ## Team Contributions
 

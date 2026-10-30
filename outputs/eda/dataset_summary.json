@@ -1,0 +1,39 @@
+{
+  "dataset": "Multimodal-Fatima/CUB_train",
+  "source_split": "train",
+  "images": 5994,
+  "classes": 200,
+  "derived_training_split": 4796,
+  "derived_validation_split": 1198,
+  "untouched_test_split": 5794,
+  "class_min": 29,
+  "class_max": 30,
+  "class_mean": 29.97,
+  "broken_images": 0,
+  "unique_pixel_hashes": 5993,
+  "duplicate_images": 1,
+  "width_min": 121,
+  "width_max": 500,
+  "height_min": 120,
+  "height_max": 500,
+  "channel_modes": {
+    "RGB": 5990,
+    "L": 4
+  },
+  "class_mapping": "dataset ClassLabel names, unchanged",
+  "caption_stats": {
+    "n_images": 5994,
+    "captions_per_image": {
+      "10": 5994
+    },
+    "n_captions": 59940,
+    "raw_vocab_size": 6690,
+    "clean_vocab_size": 4086,
+    "hapax_words": 1879,
+    "empty_captions": 0,
+    "non_ascii_captions": 27,
+    "duplicate_captions_within_image": 641,
+    "captions_without_final_period": 13448,
+    "captions_with_uppercase": 0
+  }
+}

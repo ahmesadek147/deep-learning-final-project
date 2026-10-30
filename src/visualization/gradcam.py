@@ -22,10 +22,17 @@ from src.data.augmentation import denormalize
 
 
 def find_target_layer(model: nn.Module) -> nn.Module:
-    """Pick a sensible default target layer: ``layer4[-1]`` for ResNets,
-    otherwise the last ``nn.Conv2d`` in the model."""
+    """Pick the final convolution *module* for CNNs.
+
+    For torchvision ResNet18, ``layer4[-1]`` is a residual block, not a
+    convolution.  Hooking its ``conv2`` gives Grad-CAM the final convolutional
+    activations before the block's residual addition/ReLU.
+    """
     if hasattr(model, "layer4"):
-        return model.layer4[-1]
+        block = model.layer4[-1]
+        if hasattr(block, "conv2") and isinstance(block.conv2, nn.Conv2d):
+            return block.conv2
+        return block
     last = None
     for module in model.modules():
         if isinstance(module, nn.Conv2d):
@@ -62,7 +69,10 @@ class GradCAM:
 
         Args:
             x: (B, C, H, W) normalised input batch.
-            class_idx: None (use the predicted class), an int, or a (B,) tensor.
+            class_idx: Explicit target class(es). ``None`` deliberately uses
+                each image's predicted class (the standard discriminative
+                Grad-CAM target); an int targets that class for every image,
+                and a ``(B,)`` tensor supplies one target per image.
 
         Returns:
             cams:  (B, H, W) numpy array in [0, 1]
@@ -87,6 +97,8 @@ class GradCAM:
             self.model.zero_grad(set_to_none=True)
             logits.gather(1, target[:, None]).sum().backward()
 
+        if self.activations is None or self.gradients is None:
+            raise RuntimeError("Grad-CAM hook did not capture activations and gradients.")
         weights = self.gradients.mean(dim=(2, 3), keepdim=True)          # alpha_k
         cam = F.relu((weights * self.activations).sum(dim=1, keepdim=True))
         cam = F.interpolate(cam, size=x.shape[-2:], mode="bilinear", align_corners=False)

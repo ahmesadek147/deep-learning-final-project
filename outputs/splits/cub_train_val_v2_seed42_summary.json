@@ -1,0 +1,19 @@
+{
+  "split_strategy": "stratified_group",
+  "split_version": "v2",
+  "seed": 42,
+  "validation_ratio_target": 0.2,
+  "actual_validation_ratio": 0.2002002002002002,
+  "total_samples": 5994,
+  "train_count": 4794,
+  "validation_count": 1200,
+  "num_classes": 200,
+  "class_coverage": {
+    "train": 200,
+    "validation": 200
+  },
+  "duplicate_group_count": 1,
+  "duplicate_sample_count": 2,
+  "cross_split_duplicate_count": 0,
+  "manifest_sha256": "6b003471157d8245087172e0792843b2413d0e8e5c5529f2ce534d82bb1925b2"
+}

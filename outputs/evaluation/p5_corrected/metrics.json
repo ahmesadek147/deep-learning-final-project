@@ -1,0 +1,17 @@
+{
+  "test_loss": 2.189141158074974,
+  "accuracy": 0.44960303762512943,
+  "macro_precision": 0.52878171964907,
+  "macro_recall": 0.4525818007360657,
+  "macro_f1": 0.4415568058203207,
+  "num_samples": 5794,
+  "checkpoint": "outputs\\checkpoints\\p5_corrected\\resnet18-2e6872b0\\best_model.pth",
+  "model_config": {
+    "name": "resnet18",
+    "num_classes": 200,
+    "pretrained": true,
+    "freeze_backbone": true,
+    "dropout": 0.2
+  },
+  "mlflow_run_id": "de57392f5f5e45a7861f39760775986e"
+}
