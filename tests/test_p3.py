@@ -5,7 +5,8 @@ from torch import nn
 
 from src.data.augmentation import build_eval_transform, build_train_transform
 from src.data.captions import CaptionCleaner, analyze_captions, clean_caption, split_captions
-from src.visualization.gradcam import GradCAM, collect_examples
+from src.visualization.gradcam import GradCAM, collect_examples, find_target_layer
+from src.models.transfer_learning import build_transfer_model
 
 
 def test_split_and_clean():
@@ -69,3 +70,8 @@ def test_collect_examples():
     loader = torch.utils.data.DataLoader(data, batch_size=8)
     ex = collect_examples(model, loader, "cpu", n_correct=1, n_wrong=2)
     assert len(ex["wrong"]) >= 1
+
+
+def test_resnet_gradcam_targets_final_convolution():
+    model = build_transfer_model("resnet18", num_classes=5, pretrained=False, freeze_backbone=True)
+    assert find_target_layer(model) is model.layer4[-1].conv2

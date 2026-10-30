@@ -1,0 +1,77 @@
+common:
+  task: classification
+  device: auto
+  data:
+    dataset_name: Multimodal-Fatima/CUB_train
+    test_dataset_name: Multimodal-Fatima/CUB_test
+    test_split: test
+    seed: 42
+    val_split: 0.2
+    image_size: 224
+    num_workers: 0
+  training:
+    epochs: 10
+    batch_size: 16
+    learning_rate: 0.001
+    optimizer: adamw
+    weight_decay: 0.0001
+    loss: cross_entropy
+    mixed_precision: true
+  augmentation:
+    crop_scale: [0.6, 1.0]
+    erasing_p: 0.1
+  early_stopping:
+    enabled: true
+    patience: 3
+    min_delta: 0.0
+  checkpoint:
+    save_dir: outputs/checkpoints
+  mlflow:
+    experiment_name: Bird_Classification
+    tracking_uri: sqlite:///outputs/mlflow.db
+  search:
+    summary_dir: outputs/search_summaries
+
+p4:
+  model:
+    name: simple_cnn
+    num_classes: 200
+    pretrained: false
+    dropout: 0.3
+  checkpoint:
+    namespace: p4_grid
+  training:
+    epochs: 15
+  early_stopping:
+    patience: 4
+  mlflow:
+    experiment_name: CUB_P4_GridSearch
+  search:
+    strategy: grid
+    n_trials: 8
+    space:
+      training.learning_rate: [0.001, 0.0003]
+      training.weight_decay: [0.0001, 0.00001]
+      model.dropout: [0.2, 0.4]
+
+p5:
+  model:
+    name: resnet18
+    num_classes: 200
+    pretrained: true
+    freeze_backbone: true
+    dropout: 0.2
+  checkpoint:
+    namespace: p5_random
+  training:
+    batch_size: 8
+  mlflow:
+    experiment_name: CUB_P5_RandomSearch
+  search:
+    strategy: random
+    n_trials: 8
+    space:
+      training.learning_rate: [0.003, 0.001, 0.0003]
+      training.weight_decay: [0.0001, 0.00001]
+      model.dropout: [0.1, 0.2, 0.4]
+      model.freeze_backbone: [true, false]

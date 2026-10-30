@@ -1,0 +1,16 @@
+{
+  "test_loss": 2.1814212915113065,
+  "accuracy": 0.45391784604763546,
+  "macro_precision": 0.5354631746825302,
+  "macro_recall": 0.457139433264305,
+  "macro_f1": 0.44273339353508234,
+  "num_samples": 5794,
+  "checkpoint": "outputs\\checkpoints\\p5_random\\random-618382b5-trial-005\\best_model.pth",
+  "model_config": {
+    "name": "resnet18",
+    "num_classes": 200,
+    "pretrained": true,
+    "freeze_backbone": true,
+    "dropout": 0.2
+  }
+}

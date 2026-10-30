@@ -1,0 +1,15 @@
+{
+  "test_loss": 4.589487967920748,
+  "accuracy": 0.05937176389368312,
+  "macro_precision": 0.06386318664224637,
+  "macro_recall": 0.0594135979094947,
+  "macro_f1": 0.0457098905620584,
+  "num_samples": 5794,
+  "checkpoint": "outputs\\checkpoints\\p4_grid\\grid-18850aea-trial-003\\best_model.pth",
+  "model_config": {
+    "name": "simple_cnn",
+    "num_classes": 200,
+    "pretrained": false,
+    "dropout": 0.2
+  }
+}

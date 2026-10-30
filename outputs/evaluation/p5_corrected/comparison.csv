@@ -1,0 +1,2 @@
+part,test_loss,accuracy,macro_precision,macro_recall,macro_f1,checkpoint
+p5,2.189141158074974,0.44960303762512943,0.52878171964907,0.4525818007360657,0.4415568058203207,outputs\checkpoints\p5_corrected\resnet18-2e6872b0\best_model.pth

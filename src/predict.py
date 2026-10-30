@@ -1,72 +1,41 @@
+"""Inference from a metadata-bearing experiment checkpoint."""
+from __future__ import annotations
 
 from pathlib import Path
 
 import torch
-from torch import nn
 from PIL import Image
-from torchvision import transforms
+
+from src.data.augmentation import build_eval_transform
+from src.training.run_training import build_model, select_device
 
 
-def predict_image(image_path, task):
+def predict_image(image_path, task="classification", checkpoint_path=None, device="auto", model_config=None):
     if task != "classification":
-        raise NotImplementedError(
-            f"Prediction for {task} is not implemented yet."
-        )
-
+        raise NotImplementedError(f"Prediction for {task} is not implemented yet.")
     image_path = Path(image_path)
-
     if not image_path.is_file():
-        raise FileNotFoundError(
-            f"Image not found: {image_path}"
-        )
-
-    # Recreate the same temporary model used in training
-    model = nn.Sequential(
-        nn.Flatten(),
-        nn.Linear(3 * 32 * 32, 5)
-    )
-
-    checkpoint_path = Path("outputs/checkpoints/best_model.pth")
-
+        raise FileNotFoundError(f"Image not found: {image_path}")
+    if checkpoint_path is None:
+        raise ValueError("checkpoint_path is required; choose a trial checkpoint explicitly.")
+    checkpoint_path = Path(checkpoint_path)
     if not checkpoint_path.is_file():
-        raise FileNotFoundError(
-            f"Checkpoint not found: {checkpoint_path}"
-        )
+        raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
-    # Load the trained weights
-    device = torch.device("cpu")
-
-    checkpoint = torch.load(
-        checkpoint_path,
-        map_location=device,
-        weights_only=True
-    )
-
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+    metadata = checkpoint.get("metadata", {})
+    resolved_model_config = metadata.get("model_config") or model_config
+    if not resolved_model_config:
+        raise ValueError("Checkpoint has no model metadata; provide model_config explicitly.")
+    model = build_model(resolved_model_config)
     model.load_state_dict(checkpoint["model_state_dict"])
-    model.to(device)
-    model.eval()
-
-    # Prepare the input image
-    transform = transforms.Compose([
-        transforms.Resize((32, 32)),
-        transforms.ToTensor()
-    ])
-
+    target_device = select_device(device)
+    model.to(target_device).eval()
+    transform = build_eval_transform(image_size=metadata.get("image_size", 224))
     with Image.open(image_path) as image:
-        image = image.convert("RGB")
-        image_tensor = transform(image).unsqueeze(0)
-
-    # Run inference
-    with torch.no_grad():
-        outputs = model(image_tensor)
-        probabilities = torch.softmax(outputs, dim=1)
-        confidence, predicted_class = torch.max(
-            probabilities, dim=1
-        )
-
-    result = {
-        "class_id": predicted_class.item(),
-        "confidence": confidence.item()
-    }
-
-    return result
+        image_tensor = transform(image.convert("RGB")).unsqueeze(0).to(target_device)
+    with torch.inference_mode():
+        probabilities = torch.softmax(model(image_tensor), dim=1)
+        confidence, predicted_class = probabilities.max(dim=1)
+    return {"class_id": predicted_class.item(), "confidence": confidence.item(),
+            "checkpoint": str(checkpoint_path), "device": str(target_device)}
