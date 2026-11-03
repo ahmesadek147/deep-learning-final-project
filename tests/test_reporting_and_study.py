@@ -62,6 +62,8 @@ def test_study_uses_the_duplicate_safe_split():
     data = document["common"]["data"]
     assert data["split_strategy"] == "stratified_group"
     assert data["split_manifest"].endswith("cub_train_val_v2_seed42.json")
+    assert data["num_workers"] == 0
+    assert document["common"]["training"]["selection_metric"] == "val_macro_f1"
 
 
 def test_study_holds_every_other_factor_constant():
@@ -167,10 +169,10 @@ def test_updater_never_touches_prose_outside_the_markers(tmp_path):
     update_report.update(target)
     text = target.read_text(encoding="utf-8")
     # Hand-written prose from outside every AUTO block must survive verbatim.
-    for sentence in ("## 9. Evaluation Metrics",
-                     "Macro F1 below accuracy is therefore the signature",
-                     "the search space was wrong",
-                     "vertical flipping is excluded because birds are essentially never"):
+    for sentence in ("Image colorization and image captioning are Milestone 2 objectives",
+                     "No model was retrained for report preparation",
+                     "The historical searches and their checkpoints were not retroactively changed",
+                     "The maps are coarse attribution visualizations, not segmentation masks"):
         assert sentence in text, f"updater clobbered prose: {sentence!r}"
 
 

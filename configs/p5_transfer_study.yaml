@@ -24,7 +24,9 @@ common:
     seed: 42
     val_split: 0.2
     image_size: 224
-    num_workers: 2
+    # Windows CUDA smoke validation showed that worker processes can terminate
+    # natively; keep loading in-process for this controlled full study.
+    num_workers: 0
     # Duplicate-safe split, so these runs are directly comparable with the
     # corrected P5 result rather than with the legacy leaky split.
     split_strategy: stratified_group
@@ -38,6 +40,7 @@ common:
     weight_decay: 0.0001
     loss: cross_entropy
     mixed_precision: true
+    selection_metric: val_macro_f1
   augmentation:
     crop_scale: [0.6, 1.0]
     erasing_p: 0.1
@@ -57,6 +60,7 @@ common:
     tracking_uri: sqlite:///outputs/mlflow.db
 
 output_dir: outputs/transfer_study
+final_report_path: outputs/final_submission/p5_transfer_study_report.md
 
 # Each entry is one run. `label` names it in the report table; `overrides` are
 # dotted paths merged over `common`.

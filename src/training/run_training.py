@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from pathlib import Path
+from time import perf_counter
 from uuid import uuid4
 
 import torch
@@ -93,6 +94,7 @@ def effective_mlflow_params(config: dict, amp_enabled: bool) -> dict:
         "loss": training.get("loss", "cross_entropy"),
         "batch_size": training["batch_size"],
         "epoch_limit": training["epochs"],
+        "selection_metric": training.get("selection_metric", "val_loss"),
         "mixed_precision_requested": training.get("mixed_precision", False),
         "mixed_precision_enabled": amp_enabled,
         "seed": data.get("seed", 42),
@@ -110,9 +112,15 @@ def effective_mlflow_params(config: dict, amp_enabled: bool) -> dict:
     return params
 
 
-def summarize_history(history: dict[str, list[float]]) -> dict[str, float | int]:
-    """Select the epoch that produced the checkpoint (lowest validation loss)."""
-    best_index = min(range(len(history["val_loss"])), key=history["val_loss"].__getitem__)
+def summarize_history(history: dict[str, list[float]], selection_metric: str = "val_loss") -> dict[str, float | int]:
+    """Return metrics from the checkpoint-selection epoch."""
+    if selection_metric not in history:
+        raise ValueError(f"Unsupported validation selection metric: {selection_metric}")
+    values = history[selection_metric]
+    if not values:
+        raise ValueError("Training history has no validation epochs.")
+    best_index = (min(range(len(values)), key=values.__getitem__) if selection_metric == "val_loss"
+                  else max(range(len(values)), key=values.__getitem__))
     return {
         "best_epoch": best_index + 1,
         "best_val_loss": history["val_loss"][best_index],
@@ -127,12 +135,17 @@ def run_training(config: dict, run_name: str | None = None) -> dict:
     """Run one real CUB train/validation experiment and return its artifacts."""
     config = deepcopy(config)
     training_config, model_config = config["training"], config["model"]
+    selection_metric = training_config.get("selection_metric", "val_loss")
+    if selection_metric not in {"val_loss", "val_accuracy", "val_macro_precision", "val_macro_recall", "val_macro_f1"}:
+        raise ValueError(f"Unsupported validation selection metric: {selection_metric}")
     data_config = config.get("data", {})
     seed = data_config.get("seed", 42)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
     device = select_device(config.get("device", "auto"))
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
     train_loader, val_loader = get_dataloaders(
         dataset_name=data_config.get("dataset_name", "Multimodal-Fatima/CUB_train"),
         batch_size=training_config["batch_size"], val_split=data_config.get("val_split", 0.2), seed=seed,
@@ -147,8 +160,10 @@ def run_training(config: dict, run_name: str | None = None) -> dict:
     model = build_model(model_config)
     optimizer = build_optimizer(model, training_config)
     early_config = config.get("early_stopping", {})
+    selection_mode = "min" if selection_metric == "val_loss" else "max"
     early_stopping = EarlyStopping(patience=early_config.get("patience", 5),
-                                   min_delta=early_config.get("min_delta", 0.0)) if early_config.get("enabled", True) else None
+                                   min_delta=early_config.get("min_delta", 0.0),
+                                   mode=selection_mode) if early_config.get("enabled", True) else None
     experiment_id = run_name or f"{model_config.get('name', 'model')}-{uuid4().hex[:8]}"
     checkpoint_config = config.get("checkpoint", {})
     checkpoint_root = Path(checkpoint_config.get("save_dir", "outputs/checkpoints"))
@@ -159,14 +174,23 @@ def run_training(config: dict, run_name: str | None = None) -> dict:
         split_metadata["split_manifest_sha256"] = json.loads(Path(data_config["split_manifest"]).read_text(encoding="utf-8")).get("manifest_sha256")
     checkpoint = ModelCheckpoint(
         save_dir=checkpoint_root / experiment_id,
-        metadata={"model_config": model_config, "image_size": data_config.get("image_size", 224), "split": split_metadata},
+        metadata={"model_config": model_config, "image_size": data_config.get("image_size", 224),
+                  "split": split_metadata, "selection_metric": selection_metric},
+        monitor=selection_metric, mode=selection_mode,
     )
     trainer = Trainer(model, optimizer, torch.nn.CrossEntropyLoss(), device,
                       use_amp=training_config.get("mixed_precision", False))
+    started_at = perf_counter()
     history = trainer.fit(
         train_loader, val_loader, epochs=training_config["epochs"], early_stopping=early_stopping,
         checkpoint=checkpoint, mlflow_config=config.get("mlflow"), run_name=experiment_id,
         params=effective_mlflow_params(config, trainer.use_amp),
+        selection_metric=selection_metric,
     )
-    return {"history": history, "metrics": summarize_history(history), "checkpoint": str(checkpoint.path),
-            "device": str(device), "run_name": experiment_id}
+    duration_seconds = perf_counter() - started_at
+    peak_gpu_memory_mb = (torch.cuda.max_memory_allocated(device) / (1024 ** 2)
+                          if device.type == "cuda" else None)
+    return {"history": history, "metrics": summarize_history(history, selection_metric), "checkpoint": str(checkpoint.path),
+            "device": str(device), "run_name": experiment_id,
+            "training_duration_seconds": duration_seconds,
+            "peak_gpu_memory_mb": peak_gpu_memory_mb}

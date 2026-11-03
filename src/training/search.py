@@ -19,7 +19,7 @@ SUMMARY_FIELDS = [
     "search_id", "trial_id", "part", "status", "error_type", "error_message",
     "model_name", "pretrained", "freeze_backbone", "dropout", "learning_rate",
     "weight_decay", "optimizer", "loss", "batch_size", "epoch_limit", "mixed_precision_enabled",
-    "mixed_precision_requested", "seed", "validation_split", "image_size", "eval_resize",
+    "mixed_precision_requested", "selection_metric", "seed", "validation_split", "image_size", "eval_resize",
     "num_classes", "device", "split_strategy", "split_version", "split_manifest_sha256", "train_size", "validation_size",
     "best_epoch", "best_val_loss", "best_val_accuracy", "best_val_macro_precision",
     "best_val_macro_recall", "best_val_macro_f1", "checkpoint_path",

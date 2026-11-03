@@ -1,0 +1,49 @@
+common:
+  task: classification
+  device: auto
+  data:
+    dataset_name: Multimodal-Fatima/CUB_train
+    test_dataset_name: Multimodal-Fatima/CUB_test
+    test_split: test
+    seed: 42
+    val_split: 0.2
+    image_size: 224
+    num_workers: 0
+    split_strategy: stratified_group
+    split_version: v2
+    split_manifest: outputs/splits/cub_train_val_v2_seed42.json
+    eval_resize: squash
+  training:
+    epochs: 1
+    batch_size: 8
+    optimizer: adamw
+    learning_rate: 0.0001
+    weight_decay: 0.0001
+    loss: cross_entropy
+    mixed_precision: true
+  augmentation:
+    crop_scale: [0.6, 1.0]
+    erasing_p: 0.1
+  early_stopping:
+    enabled: true
+    patience: 3
+    min_delta: 0.0
+  model:
+    name: resnet18
+    num_classes: 200
+    pretrained: true
+    dropout: 0.2
+    freeze_backbone: false
+  checkpoint:
+    save_dir: outputs/checkpoints
+    namespace: p5_transfer_study_smoke
+  mlflow:
+    experiment_name: CUB_P5_TransferStudy_Smoke
+    tracking_uri: sqlite:///outputs/mlflow.db
+
+output_dir: outputs/transfer_study_smoke
+runs:
+  - label: resnet18-finetune-lr1e-4-smoke
+    note: One-epoch diagnostic only; never cite these metrics.
+    overrides:
+      model.name: resnet18

@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from src.training.checkpoints import ModelCheckpoint
 from src.training.early_stopping import EarlyStopping
+from src.training.run_training import summarize_history
 from src.training.trainer import Trainer
 
 
@@ -85,6 +86,35 @@ def test_checkpoint_saves_only_on_improvement(tmp_path):
     assert saved["epoch"] == 3
     assert saved["val_loss"] == 0.5
     assert saved["metadata"]["model_config"]["name"] == "linear"
+
+
+def test_macro_f1_checkpoint_keeps_the_highest_scoring_epoch(tmp_path):
+    model = _model()
+    optimizer = torch.optim.Adam(model.parameters())
+    checkpoint = ModelCheckpoint(save_dir=tmp_path, monitor="val_macro_f1", mode="max")
+
+    assert checkpoint.save_if_best(model, optimizer, epoch=1, val_loss=2.0, monitor_value=0.20)
+    assert not checkpoint.save_if_best(model, optimizer, epoch=2, val_loss=1.5, monitor_value=0.15)
+    assert checkpoint.save_if_best(model, optimizer, epoch=3, val_loss=2.2, monitor_value=0.35)
+
+    saved = torch.load(checkpoint.path, map_location="cpu", weights_only=True)
+    assert saved["epoch"] == 3
+    assert saved["monitor"] == "val_macro_f1"
+    assert saved["monitor_value"] == 0.35
+
+
+def test_history_summary_uses_configured_macro_f1_selection_epoch():
+    history = {
+        "val_loss": [1.0, 0.8, 0.9],
+        "val_accuracy": [0.4, 0.5, 0.6],
+        "val_macro_precision": [0.3, 0.4, 0.5],
+        "val_macro_recall": [0.2, 0.3, 0.4],
+        "val_macro_f1": [0.25, 0.45, 0.35],
+    }
+    summary = summarize_history(history, selection_metric="val_macro_f1")
+    assert summary["best_epoch"] == 2
+    assert summary["best_val_loss"] == 0.8
+    assert summary["best_val_macro_f1"] == 0.45
 
 
 def test_fit_records_one_history_entry_per_epoch(tmp_path):

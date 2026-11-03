@@ -1,0 +1,67 @@
+﻿common:
+  task: classification
+  device: auto
+
+  data:
+    dataset_name: Multimodal-Fatima/CUB_train
+    test_dataset_name: Multimodal-Fatima/CUB_test
+    test_split: test
+    seed: 42
+    val_split: 0.2
+    image_size: 224
+    num_workers: 0
+    split_strategy: stratified_group
+    split_version: v2
+    split_manifest: outputs/splits/cub_train_val_v2_seed42.json
+    eval_resize: squash
+
+  training:
+    epochs: 10
+    batch_size: 8
+    learning_rate: 0.0001
+    optimizer: adamw
+    weight_decay: 0.0001
+    loss: cross_entropy
+    mixed_precision: true
+    selection_metric: val_macro_f1
+
+  augmentation:
+    crop_scale: [0.6, 1.0]
+    erasing_p: 0.1
+
+  early_stopping:
+    enabled: true
+    patience: 3
+    min_delta: 0.0
+
+  checkpoint:
+    save_dir: outputs/checkpoints
+
+  mlflow:
+    tracking_uri: sqlite:///outputs/mlflow.db
+
+  search:
+    summary_dir: outputs/search_summaries/p5_random_v2
+
+p5:
+  model:
+    name: efficientnet_b0
+    num_classes: 200
+    pretrained: true
+    freeze_backbone: false
+    dropout: 0.2
+
+  checkpoint:
+    namespace: p5_random_v2
+
+  mlflow:
+    experiment_name: CUB_P5_RandomSearch_V2
+
+  search:
+    strategy: random
+    n_trials: 8
+    seed: 42
+    space:
+      training.learning_rate: [0.00003, 0.0001, 0.0003]
+      training.weight_decay: [0.00001, 0.0001, 0.001]
+      model.dropout: [0.2, 0.3, 0.4]

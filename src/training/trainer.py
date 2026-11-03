@@ -74,10 +74,25 @@ class Trainer:
         return {"loss": total_loss / total, "accuracy": correct / total,
                 "macro_precision": float(precision), "macro_recall": float(recall), "macro_f1": float(f1)}
 
+    @staticmethod
+    def _selection_value(metrics: dict[str, float], selection_metric: str) -> float:
+        metric_keys = {
+            "val_loss": "loss",
+            "val_accuracy": "accuracy",
+            "val_macro_precision": "macro_precision",
+            "val_macro_recall": "macro_recall",
+            "val_macro_f1": "macro_f1",
+        }
+        try:
+            return float(metrics[metric_keys[selection_metric]])
+        except KeyError as error:
+            raise ValueError(f"Unsupported validation selection metric: {selection_metric}") from error
+
     def fit(self, train_loader: torch.utils.data.DataLoader, val_loader: torch.utils.data.DataLoader,
             epochs: int, early_stopping: Any = None, checkpoint: Any = None,
             mlflow_config: dict[str, Any] | None = None, run_name: str | None = None,
-            params: dict[str, Any] | None = None) -> dict[str, list[float]]:
+            params: dict[str, Any] | None = None,
+            selection_metric: str = "val_loss") -> dict[str, list[float]]:
         """Fit the model and log every epoch in a single MLflow run."""
         import mlflow
 
@@ -104,9 +119,10 @@ class Trainer:
                 mlflow.log_metrics(epoch_metrics, step=epoch)
                 for key, value in epoch_metrics.items():
                     history[key].append(value)
+                selection_value = self._selection_value(val_metrics, selection_metric)
                 if checkpoint is not None:
-                    checkpoint.save_if_best(self.model, self.optimizer, epoch, val_metrics["loss"])
-                if early_stopping is not None and early_stopping(val_metrics["loss"]):
+                    checkpoint.save_if_best(self.model, self.optimizer, epoch, val_metrics["loss"], selection_value)
+                if early_stopping is not None and early_stopping(selection_value):
                     break
             if checkpoint is not None and checkpoint.path.exists():
                 mlflow.log_artifact(str(checkpoint.path), artifact_path="checkpoints")

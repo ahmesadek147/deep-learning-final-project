@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import traceback
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -35,7 +36,7 @@ RESULT_COLUMNS = [
     "label", "model_name", "freeze_backbone", "learning_rate", "batch_size",
     "epochs_run", "best_epoch", "best_val_loss", "best_val_accuracy",
     "best_val_macro_precision", "best_val_macro_recall", "best_val_macro_f1",
-    "checkpoint", "note",
+    "training_duration_seconds", "peak_gpu_memory_mb", "checkpoint", "status", "note",
 ]
 
 
@@ -94,8 +95,34 @@ def _row(label: str, note: str, config: dict, result: dict) -> dict:
         "best_val_macro_precision": metrics["best_val_macro_precision"],
         "best_val_macro_recall": metrics["best_val_macro_recall"],
         "best_val_macro_f1": metrics["best_val_macro_f1"],
+        "training_duration_seconds": result.get("training_duration_seconds"),
+        "peak_gpu_memory_mb": result.get("peak_gpu_memory_mb"),
         "checkpoint": result["checkpoint"],
+        "status": "completed",
         "note": note,
+    }
+
+
+def _failed_row(label: str, note: str, config: dict, error: Exception) -> dict:
+    """Persist a failed run without inventing validation metrics."""
+    return {
+        "label": label,
+        "model_name": config["model"]["name"],
+        "freeze_backbone": config["model"].get("freeze_backbone", False),
+        "learning_rate": config["training"]["learning_rate"],
+        "batch_size": config["training"]["batch_size"],
+        "epochs_run": 0,
+        "best_epoch": None,
+        "best_val_loss": None,
+        "best_val_accuracy": None,
+        "best_val_macro_precision": None,
+        "best_val_macro_recall": None,
+        "best_val_macro_f1": None,
+        "training_duration_seconds": None,
+        "peak_gpu_memory_mb": None,
+        "checkpoint": None,
+        "status": "failed",
+        "note": f"{note} Failure: {''.join(traceback.format_exception_only(type(error), error)).strip()}",
     }
 
 
@@ -108,10 +135,13 @@ def _write_outputs(rows: list[dict], out_dir: Path) -> None:
         writer.writerows(rows)
 
 
-def write_report(rows: list[dict], out_dir: Path) -> Path:
+def write_report(rows: list[dict], out_dir: Path, report_path: Path | None = None) -> Path:
     """Write the markdown table and figure the report cites."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    ordered = sorted(rows, key=lambda r: -r["best_val_macro_f1"])
+    completed = [row for row in rows if row.get("status", "completed") == "completed"]
+    if not completed:
+        raise ValueError("No completed transfer-study runs are available for reporting.")
+    ordered = sorted(completed, key=lambda r: -r["best_val_macro_f1"])
     best = ordered[0]
 
     frozen = [r for r in rows if r["freeze_backbone"]]
@@ -127,8 +157,8 @@ def write_report(rows: list[dict], out_dir: Path) -> Path:
         "",
         "## Results",
         "",
-        "| Run | Architecture | Backbone | Learning rate | Best epoch | Val accuracy | Val macro F1 | Val loss |",
-        "|---|---|---|---:|---:|---:|---:|---:|",
+        "| Run | Architecture | Backbone | Learning rate | Best epoch | Val accuracy | Val macro F1 | Val loss | Duration | Peak GPU memory |",
+        "|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in ordered:
         lines.append(
@@ -136,7 +166,9 @@ def write_report(rows: list[dict], out_dir: Path) -> Path:
             f"{'frozen' if row['freeze_backbone'] else 'fine-tuned'} | "
             f"{row['learning_rate']:g} | {row['best_epoch']} | "
             f"{row['best_val_accuracy'] * 100:.2f}% | {row['best_val_macro_f1'] * 100:.2f}% | "
-            f"{row['best_val_loss']:.4f} |"
+            f"{row['best_val_loss']:.4f} | "
+            f"{row.get('training_duration_seconds', 0.0) or 0.0:.1f}s | "
+            f"{row.get('peak_gpu_memory_mb', 0.0) or 0.0:.1f} MB |"
         )
 
     lines += ["", "## Reading", ""]
@@ -173,7 +205,8 @@ def write_report(rows: list[dict], out_dir: Path) -> Path:
               "- `study_results.csv`, `study_results.json`: per-run metrics",
               "- `figures/transfer_study.png`: validation accuracy and macro F1 per run", ""]
 
-    path = out_dir / "transfer_study.md"
+    path = report_path or out_dir / "transfer_study.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines), encoding="utf-8")
     _plot(ordered, out_dir / "figures")
     return path
@@ -233,15 +266,22 @@ def run_study(document: dict, only: list[str] | None = None, smoke: bool = False
             config["data"]["max_train_samples"] = 16
             config["data"]["max_val_samples"] = 16
         print(f"[{index}/{len(selected)}] {label}: {run.get('note', '')}")
-        result = run_training(config, run_name=label)
-        rows.append(_row(label, run.get("note", ""), config, result))
+        try:
+            result = run_training(config, run_name=label)
+            rows.append(_row(label, run.get("note", ""), config, result))
+        except Exception as error:
+            rows.append(_failed_row(label, run.get("note", ""), config, error))
+            _write_outputs(rows, out_dir)
+            print(f"    FAILED: {rows[-1]['note']}")
+            continue
         _write_outputs(rows, out_dir)
         print(f"    val accuracy {rows[-1]['best_val_accuracy']:.4f}, "
               f"macro F1 {rows[-1]['best_val_macro_f1']:.4f} "
               f"(epoch {rows[-1]['best_epoch']})")
 
-    if rows:
-        report = write_report(rows, out_dir)
+    if any(row.get("status", "completed") == "completed" for row in rows):
+        report_path = Path(document["final_report_path"]) if document.get("final_report_path") else None
+        report = write_report(rows, out_dir, report_path)
         print(f"\nStudy report: {report}")
     return rows
 
@@ -265,7 +305,8 @@ def main() -> None:
         results_path = out_dir / "study_results.json"
         if not results_path.is_file():
             parser.error(f"No saved results at {results_path}")
-        print(write_report(json.loads(results_path.read_text(encoding="utf-8")), out_dir))
+        report_path = Path(document["final_report_path"]) if document.get("final_report_path") else None
+        print(write_report(json.loads(results_path.read_text(encoding="utf-8")), out_dir, report_path))
         return
 
     run_study(document, only=args.only, smoke=args.smoke, resume=not args.no_resume)
