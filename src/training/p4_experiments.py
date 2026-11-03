@@ -419,10 +419,9 @@ def main() -> None:
         candidates = [{"model.name": name} for name in config["architecture_candidates"]]
         outcome = run_study(config, candidates, root, args.run_id or "p4_architectures", args.resume)
     elif args.command == "grid":
-        # An explicit model in the grid config can be searched directly.
-        # Keep --winner-from supported for legacy architecture-pilot workflows.
-        if args.winner_from:
-            config = _load_winner(args.winner_from, config)
+        if not args.winner_from:
+            parser.error("Grid Search needs --winner-from architecture selection JSON")
+        config = _load_winner(args.winner_from, config)
         if config["model"]["name"] == "simple_cnn":
             parser.error("SimpleCNN ignores depth/width; choose an advanced P4 model for capacity grid")
         outcome = run_study(config, _grid_candidates(config), root,

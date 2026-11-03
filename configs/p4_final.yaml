@@ -35,6 +35,14 @@ training:
   monitor: val_macro_f1
   early_stopping: true
   patience: 20
+# NOTE: `training.early_stopping`, `training.patience` and `training.monitor` are read by
+# src/training/p4_experiments.py. The top-level `early_stopping:` block below is what
+# src/training/run_training.py reads, and mirrors it so both entry points agree.
+early_stopping:
+  enabled: true
+  patience: 20
+  min_delta: 0.0
+
 mlflow:
   experiment_name: P4_Scratch
   tracking_uri: sqlite:///outputs/p4_mlflow.db

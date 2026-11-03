@@ -50,8 +50,36 @@ def build_train_transform(
     return transforms.Compose(ops)
 
 
-def build_eval_transform(image_size: int = 224, normalize: bool = True) -> transforms.Compose:
-    ops = [transforms.Resize((image_size, image_size)), transforms.ToTensor()]
+#: Fraction of the shorter side kept by the center crop, i.e. resize to
+#: ``image_size / CENTER_CROP_RATIO`` then crop. 224/256 is the ImageNet default.
+CENTER_CROP_RATIO = 0.875
+
+
+def build_eval_transform(image_size: int = 224, normalize: bool = True,
+                         resize_mode: str = "squash") -> transforms.Compose:
+    """Deterministic validation/test preprocessing - never augmented.
+
+    ``resize_mode`` selects the geometry:
+
+    - ``"squash"`` (default): ``Resize((image_size, image_size))``. Distorts
+      aspect ratio - a 500x375 photo becomes square - which does NOT match the
+      aspect-preserving ``RandomResizedCrop`` used in training. Kept as the
+      default because every committed metric was measured with it; changing it
+      silently would make the reported numbers unreproducible.
+    - ``"center_crop"``: resize the shorter side to ``image_size / 0.875`` and
+      center-crop, preserving aspect ratio. This is the standard pairing for
+      ``RandomResizedCrop`` training and is the recommended setting for new
+      runs. See ``scripts/run_eval_geometry_ablation.sh`` for the measured
+      comparison on an existing checkpoint.
+    """
+    if resize_mode == "squash":
+        ops = [transforms.Resize((image_size, image_size))]
+    elif resize_mode == "center_crop":
+        ops = [transforms.Resize(int(round(image_size / CENTER_CROP_RATIO))),
+               transforms.CenterCrop(image_size)]
+    else:
+        raise ValueError(f"resize_mode must be 'squash' or 'center_crop', got {resize_mode!r}")
+    ops.append(transforms.ToTensor())
     if normalize:
         ops.append(transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD))
     return transforms.Compose(ops)

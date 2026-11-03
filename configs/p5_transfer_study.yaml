@@ -1,0 +1,97 @@
+# P5 controlled transfer-learning study.
+#
+# Closes two gaps in the Milestone 1 brief that the random search did not:
+#   1. "Fine-tune 2 or 3 pretrained models" - only ResNet18 had been trained.
+#   2. "Compare freezing the backbone vs fine-tuning everything" - the original
+#      search only ever fine-tuned at lr 1e-3 / 3e-3, which destroys ImageNet
+#      features, so every unfrozen trial collapsed to 2-6% accuracy. A fair
+#      comparison needs a fine-tuning learning rate one to two orders of
+#      magnitude below the head-only rate.
+#
+# This is a CONTROLLED STUDY, not a search: the runs are enumerated so that
+# exactly one factor changes at a time. Everything else - split, seed, image
+# size, augmentation, batch size, epochs, optimizer - is held constant.
+#
+# Run with:  python -m src.training.transfer_study --config configs/p5_transfer_study.yaml
+
+common:
+  task: classification
+  device: auto
+  data:
+    dataset_name: Multimodal-Fatima/CUB_train
+    test_dataset_name: Multimodal-Fatima/CUB_test
+    test_split: test
+    seed: 42
+    val_split: 0.2
+    image_size: 224
+    num_workers: 2
+    # Duplicate-safe split, so these runs are directly comparable with the
+    # corrected P5 result rather than with the legacy leaky split.
+    split_strategy: stratified_group
+    split_version: v2
+    split_manifest: outputs/splits/cub_train_val_v2_seed42.json
+    eval_resize: squash
+  training:
+    epochs: 10
+    batch_size: 8
+    optimizer: adamw
+    weight_decay: 0.0001
+    loss: cross_entropy
+    mixed_precision: true
+  augmentation:
+    crop_scale: [0.6, 1.0]
+    erasing_p: 0.1
+  early_stopping:
+    enabled: true
+    patience: 3
+    min_delta: 0.0
+  model:
+    num_classes: 200
+    pretrained: true
+    dropout: 0.2
+  checkpoint:
+    save_dir: outputs/checkpoints
+    namespace: p5_transfer_study
+  mlflow:
+    experiment_name: CUB_P5_TransferStudy
+    tracking_uri: sqlite:///outputs/mlflow.db
+
+output_dir: outputs/transfer_study
+
+# Each entry is one run. `label` names it in the report table; `overrides` are
+# dotted paths merged over `common`.
+runs:
+  - label: resnet18-frozen-lr1e-3
+    note: Reproduces the selected P5 configuration on the corrected split; the study baseline.
+    overrides:
+      model.name: resnet18
+      model.freeze_backbone: true
+      training.learning_rate: 0.001
+
+  - label: resnet18-finetune-lr1e-4
+    note: Full fine-tuning at a proper transfer learning rate.
+    overrides:
+      model.name: resnet18
+      model.freeze_backbone: false
+      training.learning_rate: 0.0001
+
+  - label: resnet18-finetune-lr3e-5
+    note: Full fine-tuning, more conservative still.
+    overrides:
+      model.name: resnet18
+      model.freeze_backbone: false
+      training.learning_rate: 0.00003
+
+  - label: efficientnet_b0-frozen-lr1e-3
+    note: Second pretrained architecture, head-only, matched to the baseline.
+    overrides:
+      model.name: efficientnet_b0
+      model.freeze_backbone: true
+      training.learning_rate: 0.001
+
+  - label: efficientnet_b0-finetune-lr1e-4
+    note: Second pretrained architecture, full fine-tuning at the same rate as run 2.
+    overrides:
+      model.name: efficientnet_b0
+      model.freeze_backbone: false
+      training.learning_rate: 0.0001

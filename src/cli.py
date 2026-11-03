@@ -19,7 +19,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Deep Learning Final Project CLI")
     parser.add_argument("command", choices=["train", "search", "predict", "evaluate"])
     parser.add_argument("--task", choices=["classification", "colorization", "caption"], default="classification")
-    parser.add_argument("--part", choices=["p4", "p5", "both"], help="Experiment selection for train/search.")
+    parser.add_argument("--part", choices=["p4", "p5", "both"], default=None,
+                        help="Experiment selection. Defaults to 'both' for train/search "
+                             "so the documented 'train --task classification' command runs as written.")
     parser.add_argument("--config", type=Path, default=Path("configs/experiment.yaml"), help="YAML experiment configuration.")
     parser.add_argument("--image", type=str, help="Input image for prediction.")
     parser.add_argument("--checkpoint", type=Path, help="Selected metadata-bearing checkpoint for prediction.")
@@ -34,6 +36,9 @@ def main() -> None:
     parser.add_argument("--split-version", help="Version label for an explicit split manifest.")
     parser.add_argument("--split-manifest", type=Path, help="Validated train/validation split manifest.")
     parser.add_argument("--checkpoint-namespace", help="Separate checkpoint namespace for a training run.")
+    parser.add_argument("--eval-resize", choices=["squash", "center_crop"],
+                        help="Validation/test geometry. 'squash' reproduces the committed metrics; "
+                             "'center_crop' preserves aspect ratio and matches the training crop.")
     args = parser.parse_args()
     if args.command == "predict":
         if not args.image:
@@ -61,14 +66,20 @@ def main() -> None:
             # selected part's shared sections and does not tune on test data.
             config = document_configs[0][1]
             config["_mlflow_by_part"] = {name: value["mlflow"] for name, value in document_configs}
+            if args.eval_resize is not None:
+                config.setdefault("data", {})["eval_resize"] = args.eval_resize
             print(run_final_evaluation(config, checkpoints, args.output_dir, args.gradcam_dir))
         except (OSError, ValueError, RuntimeError) as error:
             parser.error(str(error))
         return
     if args.task != "classification":
-        parser.error("Only classification training is implemented.")
+        parser.error(f"{args.task} training is a Milestone 2 task and is not implemented yet.")
     if args.part is None:
-        parser.error("Training and search require --part p4, p5, or both")
+        # Both experiments share one YAML, so running every classification
+        # experiment is the sensible default and keeps the command documented
+        # in the project brief ("train --task classification") working.
+        args.part = "both"
+        print("No --part given; running both classification experiments (p4 and p5).")
     try:
         part_configs = load_part_configs(args.config, args.part)
     except (OSError, ValueError) as error:
@@ -93,6 +104,8 @@ def main() -> None:
                 config.setdefault("data", {})["split_manifest"] = str(args.split_manifest)
             if args.checkpoint_namespace is not None:
                 config.setdefault("checkpoint", {})["namespace"] = args.checkpoint_namespace
+        if args.eval_resize is not None:
+            config.setdefault("data", {})["eval_resize"] = args.eval_resize
         if args.command == "train":
             print({part: run_training(config)})
         else:

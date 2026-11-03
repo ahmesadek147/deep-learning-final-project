@@ -36,16 +36,17 @@ def get_dataloaders(
     dataset_name="Multimodal-Fatima/CUB_train", batch_size=32, val_split=0.2, seed=42, image_size=224, num_workers=0,
     pin_memory=False, augmentation_config=None, max_train_samples=None, max_val_samples=None,
     split_strategy="legacy_random", split_version="legacy_random_v1", split_manifest=None,
+    eval_resize="squash",
 ):
     """
     Loads dataset, creates train/validation split, and returns PyTorch DataLoaders.
     """
     print("Loading CUB-200-2011 dataset...")
     raw_dataset = load_dataset(dataset_name, split="train")
-    
+
     # Augmentation for training; deterministic resize + normalize for validation
     train_transform = build_train_transform_from_config(augmentation_config, image_size=image_size)
-    val_transform = build_eval_transform(image_size=image_size)
+    val_transform = build_eval_transform(image_size=image_size, resize_mode=eval_resize)
     
     # Calculate split sizes
     total_size = len(raw_dataset)
@@ -100,6 +101,7 @@ def get_test_dataloader(
     image_size=224,
     num_workers=0,
     pin_memory=False,
+    eval_resize="squash",
 ):
     """Build a loader for the untouched test split.
 
@@ -108,7 +110,8 @@ def get_test_dataloader(
     model selection is complete.
     """
     raw_dataset = load_dataset(dataset_name, split=split)
-    dataset = CUBDataset(raw_dataset, transform=build_eval_transform(image_size=image_size))
+    dataset = CUBDataset(raw_dataset,
+                         transform=build_eval_transform(image_size=image_size, resize_mode=eval_resize))
     return DataLoader(dataset, batch_size=batch_size, shuffle=False,
                       num_workers=num_workers, pin_memory=pin_memory)
 

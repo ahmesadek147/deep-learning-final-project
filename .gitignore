@@ -1,4 +1,3 @@
-
 # Virtual environment
 .venv/
 venv/
@@ -7,20 +6,19 @@ venv/
 __pycache__/
 *.pyc
 
-# MLflow local files
+# MLflow local stores (large, machine-specific; export evidence instead with
+# `python -m src.reporting.export_mlflow`)
 mlruns/
 mlartifacts/
-mlflow.db
+*.db
 
-# Model checkpoints
+# Model checkpoints live in the Google Drive link in README.md, not in Git
 *.pth
 *.pt
 *.ckpt
+outputs/checkpoints/
 
-# Generated outputs
-outputs/
-
-# Dataset files
+# Dataset files (downloaded from Hugging Face on demand)
 data/
 *.zip
 *.tar.gz
@@ -28,6 +26,29 @@ data/
 # Environment files
 .env
 
-# VS Code settings
+# Editor settings
 .vscode/
 /.vs
+
+# ---------------------------------------------------------------------------
+# outputs/ is EVIDENCE and is committed, except for the heavy artifacts above.
+# A blanket `outputs/` rule here would silently drop new experiment results
+# when they are added, so the directories are listed explicitly instead.
+# ---------------------------------------------------------------------------
+outputs/*
+!outputs/eda/
+!outputs/data_audit/
+!outputs/splits/
+!outputs/search_summaries/
+!outputs/evaluation/
+!outputs/gradcam_corrected/
+!outputs/gradcam/
+!outputs/gradcam_center_crop/
+!outputs/gradcam_study_winner/
+!outputs/transfer_study/
+!outputs/p4_scoped/
+!outputs/final_submission/
+
+# Inside p4_scoped, keep the summaries and curves but not the resumable
+# per-epoch state files, which are large and machine-specific.
+outputs/p4_scoped/runs/*/last.pth

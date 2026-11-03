@@ -27,11 +27,27 @@ def select_device(requested: str = "auto") -> torch.device:
     return torch.device(requested)
 
 
+#: Scratch CNNs defined in ``src.models.p4_variants``. Registering them here is
+#: what lets ``src.cli predict`` and ``src.evaluation`` rebuild a P4 variant
+#: checkpoint; without it those checkpoints can be trained but never evaluated.
+P4_VARIANTS = {"delayed_pool_cnn": "delayed_pool", "residual_cnn": "residual"}
+
+
 def build_model(model_config: dict) -> torch.nn.Module:
     name = model_config.get("name", "simple_cnn")
     if name == "simple_cnn":
         return SimpleCNN(num_classes=model_config.get("num_classes", 200),
                          dropout=model_config.get("dropout", 0.3))
+    if name in P4_VARIANTS:
+        from src.models.p4_variants import P4ScratchCNN
+
+        return P4ScratchCNN(variant=P4_VARIANTS[name],
+                            num_classes=model_config.get("num_classes", 200),
+                            depth=model_config.get("depth", 4),
+                            width=model_config.get("width", 32),
+                            max_channels=model_config.get("max_channels", 384),
+                            dropout=model_config.get("dropout", 0.3),
+                            pretrained=False)
     if name in {"resnet18", "efficientnet_b0"}:
         return build_transfer_model(model_name=name, num_classes=model_config.get("num_classes", 200),
                                     pretrained=model_config.get("pretrained", True),
@@ -82,6 +98,7 @@ def effective_mlflow_params(config: dict, amp_enabled: bool) -> dict:
         "seed": data.get("seed", 42),
         "validation_split": data.get("val_split", 0.2),
         "image_size": data.get("image_size", 224),
+        "eval_resize": data.get("eval_resize", "squash"),
         "num_classes": model.get("num_classes", 200),
         "device": config.get("device", "auto"),
     }
@@ -125,6 +142,7 @@ def run_training(config: dict, run_name: str | None = None) -> dict:
         split_strategy=data_config.get("split_strategy", "legacy_random"),
         split_version=data_config.get("split_version", "legacy_random_v1"),
         split_manifest=data_config.get("split_manifest"),
+        eval_resize=data_config.get("eval_resize", "squash"),
     )
     model = build_model(model_config)
     optimizer = build_optimizer(model, training_config)

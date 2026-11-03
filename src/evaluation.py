@@ -111,7 +111,8 @@ def run_final_evaluation(config, checkpoints: dict[str, str], output_dir="output
         raise ValueError("Training and test ClassLabel mappings differ; refusing evaluation.")
     loader = get_test_dataloader(data["test_dataset_name"], data.get("test_split", "test"),
                                  batch_size=training.get("batch_size", 8), image_size=data["image_size"],
-                                 num_workers=data.get("num_workers", 0), pin_memory=device.type == "cuda")
+                                 num_workers=data.get("num_workers", 0), pin_memory=device.type == "cuda",
+                                 eval_resize=data.get("eval_resize", "squash"))
     root = Path(output_dir); root.mkdir(parents=True, exist_ok=True)
     summary = []
     for part, checkpoint in checkpoints.items():

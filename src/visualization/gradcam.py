@@ -24,10 +24,24 @@ from src.data.augmentation import denormalize
 def find_target_layer(model: nn.Module) -> nn.Module:
     """Pick the final convolution *module* for CNNs.
 
-    For torchvision ResNet18, ``layer4[-1]`` is a residual block, not a
-    convolution.  Hooking its ``conv2`` gives Grad-CAM the final convolutional
-    activations before the block's residual addition/ReLU.
+    Resolution order:
+
+    1. ``model.get_gradcam_target_layer()`` when the architecture declares its
+       own target. Walking ``model.modules()`` is not safe in general: in a
+       residual stage the 1x1 projection shortcut is registered *after* the
+       3x3 convolutions, so the "last" Conv2d is the shortcut and Grad-CAM
+       would explain the skip path instead of the feature path.
+    2. For torchvision ResNet, ``layer4[-1].conv2`` - ``layer4[-1]`` is a
+       residual block, not a convolution, so hooking its ``conv2`` gives the
+       final convolutional activations before the residual add/ReLU.
+    3. Otherwise the last ``Conv2d`` in module order.
     """
+    declared = getattr(model, "get_gradcam_target_layer", None)
+    if callable(declared):
+        layer = declared()
+        if not isinstance(layer, nn.Module):
+            raise TypeError(f"{type(model).__name__}.get_gradcam_target_layer() must return a module.")
+        return layer
     if hasattr(model, "layer4"):
         block = model.layer4[-1]
         if hasattr(block, "conv2") and isinstance(block.conv2, nn.Conv2d):

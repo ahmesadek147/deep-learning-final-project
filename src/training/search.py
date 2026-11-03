@@ -19,7 +19,7 @@ SUMMARY_FIELDS = [
     "search_id", "trial_id", "part", "status", "error_type", "error_message",
     "model_name", "pretrained", "freeze_backbone", "dropout", "learning_rate",
     "weight_decay", "optimizer", "loss", "batch_size", "epoch_limit", "mixed_precision_enabled",
-    "mixed_precision_requested", "seed", "validation_split", "image_size",
+    "mixed_precision_requested", "seed", "validation_split", "image_size", "eval_resize",
     "num_classes", "device", "split_strategy", "split_version", "split_manifest_sha256", "train_size", "validation_size",
     "best_epoch", "best_val_loss", "best_val_accuracy", "best_val_macro_precision",
     "best_val_macro_recall", "best_val_macro_f1", "checkpoint_path",
@@ -125,7 +125,12 @@ def run_search(config: dict, strategy: str) -> dict[str, Any]:
 
     if not results:
         raise RuntimeError(f"All trials failed; see {csv_path} for failure details.")
-    best = max(results, key=lambda result: result["history"]["val_macro_f1"][-1])
+    # Select on the SAME epoch the checkpoint was written for (lowest validation
+    # loss), which is what ``summarize_history`` reports into the CSV. Selecting
+    # on the last epoch's macro F1 instead would pick a trial on one epoch and
+    # then evaluate a checkpoint saved at another - and with early stopping the
+    # last epoch is by definition a non-improving one.
+    best = max(results, key=lambda result: result["metrics"]["best_val_macro_f1"])
     return {"strategy": strategy, "part": part, "search_id": search_id, "summary_csv": str(csv_path),
             "search_cardinality": cardinality, "executed_trials": len(records), "completed_trials": len(results),
             "failed_trials": len(records) - len(results), "trials": results, "best_trial": best,

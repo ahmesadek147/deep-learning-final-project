@@ -35,11 +35,18 @@ training:
   mixed_precision: true
   monitor: val_macro_f1
   early_stopping: false
+# NOTE: `training.early_stopping`, `training.patience` and `training.monitor` are read by
+# src/training/p4_experiments.py. The top-level `early_stopping:` block below is what
+# src/training/run_training.py reads, and mirrors it so both entry points agree.
+early_stopping:
+  enabled: false
+
 mlflow:
   experiment_name: P4_Scratch
   tracking_uri: sqlite:///outputs/p4_mlflow.db
 search:
   strategy: grid
+  n_trials: 4   # must equal the full grid cardinality
   space:
     model.depth:
     - 4

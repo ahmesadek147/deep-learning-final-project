@@ -1,7 +1,7 @@
-# P4 verified residual-CNN depth x width Grid Search: four 40-epoch trials.
+# P4 capacity + learning-rate Grid Search, after the architecture pilot.
 device: cuda
 model:
-  name: residual_cnn
+  name: delayed_pool_cnn
   num_classes: 200
   pretrained: false
   depth: 4
@@ -27,18 +27,26 @@ augmentation:
   hue: 0.01
   erasing_p: 0.1
 training:
-  epochs: 40
+  epochs: 10
   batch_size: 16
   learning_rate: 0.001
   weight_decay: 0.0001
   mixed_precision: true
   monitor: val_macro_f1
   early_stopping: false
+# NOTE: `training.early_stopping`, `training.patience` and `training.monitor` are read by
+# src/training/p4_experiments.py. The top-level `early_stopping:` block below is what
+# src/training/run_training.py reads, and mirrors it so both entry points agree.
+early_stopping:
+  enabled: false
+
 mlflow:
   experiment_name: P4_Scratch
   tracking_uri: sqlite:///outputs/p4_mlflow.db
 search:
   strategy: grid
+  n_trials: 8   # must equal the full grid cardinality
   space:
     model.depth: [4, 5]
     model.width: [24, 32]
+    training.learning_rate: [0.001, 0.0003]

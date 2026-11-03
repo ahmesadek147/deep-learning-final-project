@@ -43,11 +43,14 @@ def build_transfer_model(
             for param in model.parameters():
                 param.requires_grad = False
 
-        model.classifier[1] = nn.Sequential(
+        # Replace the WHOLE classifier: torchvision's is already
+        # Sequential(Dropout(0.2), Linear), so swapping only index 1 for
+        # another Sequential(Dropout, Linear) would stack two dropout layers.
+        model.classifier = nn.Sequential(
             nn.Dropout(dropout),
             nn.Linear(in_features, num_classes),
         )
-        for param in model.classifier[1].parameters():
+        for param in model.classifier.parameters():
             param.requires_grad = True
 
     else:
