@@ -52,7 +52,12 @@ def test_p4_configs_and_grid_are_valid():
                for name in architecture["architecture_candidates"])
     grid = load_config(Path("configs/p4_grid.yaml"))
     final = load_config(Path("configs/p4_final.yaml"))
-    assert len(_grid_candidates(grid)) == 8
+    assert len(_grid_candidates(grid)) == 4
+    assert grid["model"]["name"] == "residual_cnn"
+    assert grid["training"]["epochs"] == 40
+    assert grid["training"]["learning_rate"] == 0.001
+    assert grid["training"]["weight_decay"] == 0.0001
+    assert set(grid["search"]["space"]) == {"model.depth", "model.width"}
     assert all(config["data"] == architecture["data"] for config in (grid, final))
     assert final["training"]["epochs"] > grid["training"]["epochs"]
     assert final["training"]["early_stopping"]
@@ -67,6 +72,36 @@ def test_winner_must_use_the_same_data_definition(tmp_path):
     path.write_text(json.dumps({"best_trial": prior}), encoding="utf-8")
     with pytest.raises(ValueError, match="seed"):
         _load_winner(path, config)
+
+
+def test_depth_width_grid_cli_uses_explicit_residual_model_without_pilot(monkeypatch, tmp_path):
+    """The completed four-run grid is independent of the pilot winner file."""
+    import sys
+    from src.training import p4_experiments
+
+    captured = {}
+
+    def stub_study(config, candidates, output_root, study_id, resume=False):
+        captured.update(config=config, candidates=candidates, output_root=output_root,
+                        study_id=study_id, resume=resume)
+        return {"study_id": study_id, "completed_trials": len(candidates)}
+
+    monkeypatch.setattr(p4_experiments, "run_study", stub_study)
+    monkeypatch.setattr(sys, "argv", [
+        "p4_experiments", "grid", "--config", "configs/p4_grid.yaml",
+        "--output-root", str(tmp_path), "--run-id", "p4_residual_dw40",
+    ])
+    p4_experiments.main()
+
+    assert captured["config"]["model"]["name"] == "residual_cnn"
+    assert captured["study_id"] == "p4_residual_dw40"
+    assert len(captured["candidates"]) == 4
+    assert captured["candidates"] == [
+        {"model.depth": 4, "model.width": 24},
+        {"model.depth": 4, "model.width": 32},
+        {"model.depth": 5, "model.width": 24},
+        {"model.depth": 5, "model.width": 32},
+    ]
 
 
 def test_one_epoch_training_and_resume_with_mocked_p2_loader(monkeypatch, tmp_path):

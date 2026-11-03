@@ -86,24 +86,28 @@ classes. If this fails, stop and send the error before long training.
 This fairly compares baseline SimpleCNN, delayed-pooling CNN and residual CNN
 on the same data, seed, augmentation, LR, weight decay and epoch budget.
 
-## Cell 7 — P4 Grid Search (8 × 10 epochs)
+## Cell 7 — verified residual-CNN Grid Search (4 × 40 epochs)
 
 ```python
 !python -m src.training.p4_experiments grid \
   --config configs/p4_grid.yaml \
-  --winner-from outputs/p4_scoped/search/p4_architectures_selection.json
+  --output-root outputs/p4_grid_depth_width40 \
+  --run-id p4_residual_dw40
 ```
 
-Searches *depth* [4, 5], *width* [24, 32], *learning rate* [.001, .0003].
-If baseline SimpleCNN wins, the capacity Grid Search intentionally stops;
-discuss whether to explore the best advanced P4 variant with your leader.
+Searches **residual CNN depth [4, 5] × width [24, 32]**, at fixed learning
+rate **0.001** and weight decay **0.0001**, with 40 epochs per trial.
+This reproduces the completed Kaggle architecture grid. Do **not** use
+`--winner-from` here: the model family is intentionally fixed to residual CNN.
+The completed evidence identifies trial 04 (depth 5, width 32) as winner
+(31.92% validation accuracy, 30.13% macro-F1 at epoch 40).
 
 ## Cell 8 — final scratch training (up to 80 epochs)
 
 ```python
 !python -m src.training.p4_experiments final \
   --config configs/p4_final.yaml \
-  --winner-from outputs/p4_scoped/search/p4_grid_selection.json \
+  --winner-from outputs/p4_grid_depth_width40/search/p4_residual_dw40_selection.json \
   --run-id p4_final
 ```
 
@@ -121,6 +125,8 @@ and selection JSON. MLflow is configured as `P4_Scratch` in the local
 Write your P4 report with `P4_REPORT_TEMPLATE.md`, and **share results** with
 P1/P2/P3/P5 without editing any of their code.
 
-Time note: 3×10 + 8×10 + 80 = **190 total training epochs**, potentially many
-hours on a T4. Pilot ranking after 10 epochs may differ from ranking after 80;
-report that limitation. No real accuracy numbers exist until runs finish.
+Time note: the optional architecture pilot (3×10), verified grid (4×40), and
+fresh final stage (up to 80) total **270 training epochs** if all are rerun.
+The verified grid is **already complete**: reuse its saved results/checkpoints
+instead of rerunning it unless reproducibility testing requires a fresh run.
+The independent 100-epoch AdamW/cosine experiment is not part of this grid.

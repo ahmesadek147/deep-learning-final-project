@@ -1,0 +1,61 @@
+{
+  "device": "cuda",
+  "model": {
+    "name": "residual_cnn",
+    "num_classes": 200,
+    "pretrained": false,
+    "depth": 4,
+    "width": 32,
+    "max_channels": 384,
+    "dropout": 0.3
+  },
+  "data": {
+    "dataset_name": "Multimodal-Fatima/CUB_train",
+    "seed": 42,
+    "val_split": 0.2,
+    "image_size": 224,
+    "num_workers": 2,
+    "split_strategy": "stratified_group",
+    "split_version": "v2",
+    "split_manifest": "outputs/splits/cub_train_val_v2_seed42.json"
+  },
+  "augmentation": {
+    "crop_scale": [
+      0.8,
+      1.0
+    ],
+    "flip_p": 0.5,
+    "rotation": 10,
+    "brightness": 0.15,
+    "contrast": 0.15,
+    "saturation": 0.1,
+    "hue": 0.01,
+    "erasing_p": 0.1
+  },
+  "training": {
+    "epochs": 40,
+    "batch_size": 16,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "mixed_precision": true,
+    "monitor": "val_macro_f1",
+    "early_stopping": false
+  },
+  "mlflow": {
+    "experiment_name": "P4_Scratch",
+    "tracking_uri": "sqlite:///outputs/p4_mlflow.db"
+  },
+  "search": {
+    "strategy": "grid",
+    "space": {
+      "model.depth": [
+        4,
+        5
+      ],
+      "model.width": [
+        24,
+        32
+      ]
+    }
+  }
+}

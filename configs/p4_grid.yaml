@@ -1,7 +1,7 @@
-# P4 capacity + learning-rate Grid Search, after the architecture pilot.
+# P4 verified residual-CNN depth x width Grid Search: four 40-epoch trials.
 device: cuda
 model:
-  name: delayed_pool_cnn
+  name: residual_cnn
   num_classes: 200
   pretrained: false
   depth: 4
@@ -27,7 +27,7 @@ augmentation:
   hue: 0.01
   erasing_p: 0.1
 training:
-  epochs: 10
+  epochs: 40
   batch_size: 16
   learning_rate: 0.001
   weight_decay: 0.0001
@@ -42,4 +42,3 @@ search:
   space:
     model.depth: [4, 5]
     model.width: [24, 32]
-    training.learning_rate: [0.001, 0.0003]
