@@ -1,0 +1,10 @@
+{
+  "model": "p4_residual_dw40-trial-04",
+  "dataset": "Multimodal-Fatima/CUB_test",
+  "test_samples": 5794,
+  "test_loss": 2.9951794120744464,
+  "test_accuracy": 0.32688988608905767,
+  "test_macro_precision": 0.37384097338812194,
+  "test_macro_recall": 0.32855509811402256,
+  "test_macro_f1": 0.3244691279270958
+}
