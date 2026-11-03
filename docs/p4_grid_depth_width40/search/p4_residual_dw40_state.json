@@ -1,0 +1,334 @@
+{
+  "config_hash": "94260763428d9972ed00dacd68f05b2e1d64c898bb90a0e20eae62c2c93047ac",
+  "completed": {
+    "p4_residual_dw40-trial-01": {
+      "run_id": "p4_residual_dw40-trial-01",
+      "model": {
+        "name": "residual_cnn",
+        "num_classes": 200,
+        "pretrained": false,
+        "depth": 4,
+        "width": 24,
+        "max_channels": 384,
+        "dropout": 0.3
+      },
+      "config": {
+        "device": "cuda",
+        "model": {
+          "name": "residual_cnn",
+          "num_classes": 200,
+          "pretrained": false,
+          "depth": 4,
+          "width": 24,
+          "max_channels": 384,
+          "dropout": 0.3
+        },
+        "data": {
+          "dataset_name": "Multimodal-Fatima/CUB_train",
+          "seed": 42,
+          "val_split": 0.2,
+          "image_size": 224,
+          "num_workers": 2,
+          "split_strategy": "stratified_group",
+          "split_version": "v2",
+          "split_manifest": "outputs/splits/cub_train_val_v2_seed42.json"
+        },
+        "augmentation": {
+          "crop_scale": [
+            0.8,
+            1.0
+          ],
+          "flip_p": 0.5,
+          "rotation": 10,
+          "brightness": 0.15,
+          "contrast": 0.15,
+          "saturation": 0.1,
+          "hue": 0.01,
+          "erasing_p": 0.1
+        },
+        "training": {
+          "epochs": 40,
+          "batch_size": 16,
+          "learning_rate": 0.001,
+          "weight_decay": 0.0001,
+          "mixed_precision": true,
+          "monitor": "val_macro_f1",
+          "early_stopping": false
+        },
+        "mlflow": {
+          "experiment_name": "P4_Scratch",
+          "tracking_uri": "sqlite:///outputs/p4_mlflow.db"
+        },
+        "search": {
+          "strategy": "grid",
+          "space": {
+            "model.depth": [
+              4,
+              5
+            ],
+            "model.width": [
+              24,
+              32
+            ]
+          }
+        }
+      },
+      "best_epoch": 40,
+      "best_val_accuracy": 0.1375,
+      "best_val_macro_f1": 0.12065237396239643,
+      "best_val_loss": 4.200533905029297,
+      "parameter_count": 724040,
+      "training_seconds": 1529.4278876919998,
+      "peak_gpu_memory_mb": 1074.673828125,
+      "checkpoint": "/kaggle/working/P4_Grid_DepthWidth40/runs/p4_residual_dw40-trial-01/best_model.pth",
+      "official_test_used": false
+    },
+    "p4_residual_dw40-trial-02": {
+      "run_id": "p4_residual_dw40-trial-02",
+      "model": {
+        "name": "residual_cnn",
+        "num_classes": 200,
+        "pretrained": false,
+        "depth": 4,
+        "width": 32,
+        "max_channels": 384,
+        "dropout": 0.3
+      },
+      "config": {
+        "device": "cuda",
+        "model": {
+          "name": "residual_cnn",
+          "num_classes": 200,
+          "pretrained": false,
+          "depth": 4,
+          "width": 32,
+          "max_channels": 384,
+          "dropout": 0.3
+        },
+        "data": {
+          "dataset_name": "Multimodal-Fatima/CUB_train",
+          "seed": 42,
+          "val_split": 0.2,
+          "image_size": 224,
+          "num_workers": 2,
+          "split_strategy": "stratified_group",
+          "split_version": "v2",
+          "split_manifest": "outputs/splits/cub_train_val_v2_seed42.json"
+        },
+        "augmentation": {
+          "crop_scale": [
+            0.8,
+            1.0
+          ],
+          "flip_p": 0.5,
+          "rotation": 10,
+          "brightness": 0.15,
+          "contrast": 0.15,
+          "saturation": 0.1,
+          "hue": 0.01,
+          "erasing_p": 0.1
+        },
+        "training": {
+          "epochs": 40,
+          "batch_size": 16,
+          "learning_rate": 0.001,
+          "weight_decay": 0.0001,
+          "mixed_precision": true,
+          "monitor": "val_macro_f1",
+          "early_stopping": false
+        },
+        "mlflow": {
+          "experiment_name": "P4_Scratch",
+          "tracking_uri": "sqlite:///outputs/p4_mlflow.db"
+        },
+        "search": {
+          "strategy": "grid",
+          "space": {
+            "model.depth": [
+              4,
+              5
+            ],
+            "model.width": [
+              24,
+              32
+            ]
+          }
+        }
+      },
+      "best_epoch": 39,
+      "best_val_accuracy": 0.15666666666666668,
+      "best_val_macro_f1": 0.1352745387323747,
+      "best_val_loss": 4.196977691650391,
+      "parameter_count": 1268680,
+      "training_seconds": 1862.3184397500002,
+      "peak_gpu_memory_mb": 1424.49560546875,
+      "checkpoint": "/kaggle/working/P4_Grid_DepthWidth40/runs/p4_residual_dw40-trial-02/best_model.pth",
+      "official_test_used": false
+    },
+    "p4_residual_dw40-trial-03": {
+      "run_id": "p4_residual_dw40-trial-03",
+      "model": {
+        "name": "residual_cnn",
+        "num_classes": 200,
+        "pretrained": false,
+        "depth": 5,
+        "width": 24,
+        "max_channels": 384,
+        "dropout": 0.3
+      },
+      "config": {
+        "device": "cuda",
+        "model": {
+          "name": "residual_cnn",
+          "num_classes": 200,
+          "pretrained": false,
+          "depth": 5,
+          "width": 24,
+          "max_channels": 384,
+          "dropout": 0.3
+        },
+        "data": {
+          "dataset_name": "Multimodal-Fatima/CUB_train",
+          "seed": 42,
+          "val_split": 0.2,
+          "image_size": 224,
+          "num_workers": 2,
+          "split_strategy": "stratified_group",
+          "split_version": "v2",
+          "split_manifest": "outputs/splits/cub_train_val_v2_seed42.json"
+        },
+        "augmentation": {
+          "crop_scale": [
+            0.8,
+            1.0
+          ],
+          "flip_p": 0.5,
+          "rotation": 10,
+          "brightness": 0.15,
+          "contrast": 0.15,
+          "saturation": 0.1,
+          "hue": 0.01,
+          "erasing_p": 0.1
+        },
+        "training": {
+          "epochs": 40,
+          "batch_size": 16,
+          "learning_rate": 0.001,
+          "weight_decay": 0.0001,
+          "mixed_precision": true,
+          "monitor": "val_macro_f1",
+          "early_stopping": false
+        },
+        "mlflow": {
+          "experiment_name": "P4_Scratch",
+          "tracking_uri": "sqlite:///outputs/p4_mlflow.db"
+        },
+        "search": {
+          "strategy": "grid",
+          "space": {
+            "model.depth": [
+              4,
+              5
+            ],
+            "model.width": [
+              24,
+              32
+            ]
+          }
+        }
+      },
+      "best_epoch": 40,
+      "best_val_accuracy": 0.31333333333333335,
+      "best_val_macro_f1": 0.29159016830849455,
+      "best_val_loss": 3.0628045813242593,
+      "parameter_count": 2829128,
+      "training_seconds": 1704.0531318649982,
+      "peak_gpu_memory_mb": 1152.01611328125,
+      "checkpoint": "/kaggle/working/P4_Grid_DepthWidth40/runs/p4_residual_dw40-trial-03/best_model.pth",
+      "official_test_used": false
+    },
+    "p4_residual_dw40-trial-04": {
+      "run_id": "p4_residual_dw40-trial-04",
+      "model": {
+        "name": "residual_cnn",
+        "num_classes": 200,
+        "pretrained": false,
+        "depth": 5,
+        "width": 32,
+        "max_channels": 384,
+        "dropout": 0.3
+      },
+      "config": {
+        "device": "cuda",
+        "model": {
+          "name": "residual_cnn",
+          "num_classes": 200,
+          "pretrained": false,
+          "depth": 5,
+          "width": 32,
+          "max_channels": 384,
+          "dropout": 0.3
+        },
+        "data": {
+          "dataset_name": "Multimodal-Fatima/CUB_train",
+          "seed": 42,
+          "val_split": 0.2,
+          "image_size": 224,
+          "num_workers": 2,
+          "split_strategy": "stratified_group",
+          "split_version": "v2",
+          "split_manifest": "outputs/splits/cub_train_val_v2_seed42.json"
+        },
+        "augmentation": {
+          "crop_scale": [
+            0.8,
+            1.0
+          ],
+          "flip_p": 0.5,
+          "rotation": 10,
+          "brightness": 0.15,
+          "contrast": 0.15,
+          "saturation": 0.1,
+          "hue": 0.01,
+          "erasing_p": 0.1
+        },
+        "training": {
+          "epochs": 40,
+          "batch_size": 16,
+          "learning_rate": 0.001,
+          "weight_decay": 0.0001,
+          "mixed_precision": true,
+          "monitor": "val_macro_f1",
+          "early_stopping": false
+        },
+        "mlflow": {
+          "experiment_name": "P4_Scratch",
+          "tracking_uri": "sqlite:///outputs/p4_mlflow.db"
+        },
+        "search": {
+          "strategy": "grid",
+          "space": {
+            "model.depth": [
+              4,
+              5
+            ],
+            "model.width": [
+              24,
+              32
+            ]
+          }
+        }
+      },
+      "best_epoch": 40,
+      "best_val_accuracy": 0.31916666666666665,
+      "best_val_macro_f1": 0.3012907416552869,
+      "best_val_loss": 3.052496627171834,
+      "parameter_count": 3606728,
+      "training_seconds": 2004.334818149001,
+      "peak_gpu_memory_mb": 1493.3857421875,
+      "checkpoint": "/kaggle/working/P4_Grid_DepthWidth40/runs/p4_residual_dw40-trial-04/best_model.pth",
+      "official_test_used": false
+    }
+  },
+  "failures": {}
+}
